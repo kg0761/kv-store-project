@@ -1,7 +1,4 @@
-"""Append-only, persistent key-value store with a linear-scan index.
 
-Run with ``python3 kvstore.py``. No third-party dependencies are needed.
-"""
 
 from __future__ import annotations
 
