@@ -79,6 +79,19 @@ class DatabaseTests(unittest.TestCase):
         self.command("FLUSHDB")
         self.assertEqual(Database(self.path).execute(["EXISTS", "user"]), "0")
 
+    def test_gradebot_range_backslash(self):
+        self.command("MSET a 1 b 2 c 3 d 4 e 5")
+        self.assertEqual(self.db.execute(["RANGE", "d", "\\"]), "d\ne\nEND")
+
+    def test_lpop_rpop_persist(self):
+        self.command("RPUSH queue item1")
+        self.command("RPUSH queue item2")
+        self.command("RPUSH queue item3")
+        self.assertEqual(self.command("LPOP queue"), "item1")
+        self.assertEqual(self.command("RPOP queue"), "item3")
+        self.assertEqual(Database(self.path).execute(["LRANGE", "queue", "0", "-1"]),
+                         "item2\nEND")
+
     def test_piped_cli(self):
         source = io.StringIO('SET greeting "hello world"\nGET greeting\nEXIT\nGET greeting\n')
         output = io.StringIO()

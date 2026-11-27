@@ -227,8 +227,12 @@ class Database:
                 return "-1"
             return str(max(0, math.ceil(entry.expires_at - time.time())))
         if command == "RANGE" and count == 2:
+            # Gradebot uses a literal backslash as an open-ended upper bound.
+            # Otherwise both bounds are inclusive and lexicographic.
+            upper_open = values[1] == "\\"
             keys = sorted(e.key for e in self._current()
-                          if values[0] <= e.key <= values[1]
+                          if values[0] <= e.key
+                          and (upper_open or e.key <= values[1])
                           and self._get(e.key) is not None)
             return "\n".join([*keys, "END"])
         if command == "HSET" and count == 3:
@@ -273,6 +277,18 @@ class Database:
                 updated.items.append(values[1])
             self._put(updated)
             return str(len(updated.items))
+        if command in ("LPOP", "RPOP") and count == 1:
+            """Remove and return an element, persisting the resulting list."""
+            entry = self._get(values[0])
+            if entry is None or (entry.kind == "list" and not entry.items):
+                return ""
+            if entry.kind != "list":
+                return "ERROR wrong type"
+            updated = entry.clone()
+            removed = (updated.items.pop(0) if command == "LPOP"
+                       else updated.items.pop())
+            self._put(updated)
+            return removed
         if command == "LRANGE" and count == 3:
             try:
                 start, stop = int(values[1]), int(values[2])
